@@ -381,13 +381,11 @@
     </div>
 
     <script>
-        const API_BASE = 'http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty';
-        const SERVICE_KEY = '45bac2492021e95f653a264c86a227b1926dc9a37ea1e21e949b8d1b659e2c09';
+        const API_BASE = '/api/air-quality';
         const REGIONS = ['삼천동', '효자동', '팔복동', '노송동'];
 
         function getApiUrl(stationName) {
-            const encoded = encodeURIComponent(stationName);
-            return `${API_BASE}?stationName=${encoded}&dataTerm=DAILY&pageNo=1&numOfRows=1&returnType=json&serviceKey=${SERVICE_KEY}&ver=1.5`;
+            return `${API_BASE}/${encodeURIComponent(stationName)}`;
         }
 
         function getGradeColor(value, type) {
