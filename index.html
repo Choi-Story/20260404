@@ -429,9 +429,21 @@
 
         async function fetchData() {
             try {
-                const promises = REGIONS.map(region => 
-                    fetch(getApiUrl(region)).then(res => res.json())
-                );
+                const promises = REGIONS.map(region => {
+                    const url = getApiUrl(region);
+                    return fetch(url)
+                        .then(res => {
+                            if (!res.ok) {
+                                throw new Error(`HTTP error! status: ${res.status}`);
+                            }
+                            return res.json();
+                        })
+                        .catch(err => {
+                            console.error(`Failed to fetch ${region}:`, err);
+                            return { response: { body: { items: [] } } };
+                        });
+                });
+                
                 const results = await Promise.all(promises);
 
                 const mainItem = results[0].response?.body?.items?.[0];
@@ -440,9 +452,10 @@
                 if (mainItem) {
                     displayData(mainItem, otherItems);
                 } else {
-                    showError('데이터를 불러올 수 없습니다');
+                    showError('데이터를 불러올 수 없습니다. 나중에 다시 시도해주세요.');
                 }
             } catch (error) {
+                console.error('Fetch error:', error);
                 showError('API 연결 오류: ' + error.message);
             }
         }
