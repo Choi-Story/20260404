@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼천동 대기질 정보</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #f99;
+            color: #c33;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .data-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .data-card.good {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+        }
+
+        .data-card.normal {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+        }
+
+        .data-card.bad {
+            background: linear-gradient(135deg, #ff9a56 0%, #ff6a3d 100%);
+        }
+
+        .data-card.verybad {
+            background: linear-gradient(135deg, #c71585 0%, #ff1493 100%);
+        }
+
+        .card-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-value {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .card-unit {
+            font-size: 13px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .card-grade {
+            font-size: 13px;
+            margin-top: 8px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.3);
+            opacity: 0.85;
+            font-weight: 600;
+        }
+
+        .info-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .info-value {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .refresh-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+
+        .activity-section {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 18px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+            max-height: 120px;
+            overflow: hidden;
+        }
+
+        .activity-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .activity-message {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .activity-recommendation {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            line-height: 1.3;
+            max-height: 50px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .other-regions-section {
+            margin-top: 10px;
+            margin-bottom: 25px;
+        }
+
+        .other-regions-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .regions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+
+        .region-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .region-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .region-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .region-pm-row {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 8px;
+        }
+
+        .region-pm-item {
+            flex: 1;
+            font-size: 11px;
+        }
+
+        .region-pm-label {
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 2px;
+        }
+
+        .region-pm-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 2px;
+        }
+
+        .region-pm-grade {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: #f0f0f0;
+        }
+
+        .region-pm-grade.good {
+            background: rgba(86, 171, 47, 0.1);
+            color: #56ab2f;
+        }
+
+        .region-pm-grade.normal {
+            background: rgba(255, 200, 0, 0.1);
+            color: #cc9a00;
+        }
+
+        .region-pm-grade.bad {
+            background: rgba(255, 106, 61, 0.1);
+            color: #ff6a3d;
+        }
+
+        .region-pm-grade.verybad {
+            background: rgba(255, 20, 147, 0.1);
+            color: #c71585;
+        }
+
+        .timestamp {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+                border-radius: 20px;
+            }
+
+            .header h1 {
+                font-size: 26px;
+            }
+
+            .card-value {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📍 삼천동</h1>
+            <p>실시간 대기질 정보</p>
+        </div>
+
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>데이터를 불러오는 중입니다...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://api.allorigins.win/raw?url=';
+        const API_URL = 'http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty';
+        const SERVICE_KEY = '45bac2492021e95f653a264c86a227b1926dc9a37ea1e21e949b8d1b659e2c09';
+        const REGIONS = ['삼천동', '효자동', '팔복동', '노송동'];
+
+        function getApiUrl(stationName) {
+            const encoded = encodeURIComponent(stationName);
+            const apiUrl = `${API_URL}?stationName=${encoded}&dataTerm=DAILY&pageNo=1&numOfRows=1&returnType=json&serviceKey=${SERVICE_KEY}&ver=1.5`;
+            return `${API_BASE}${encodeURIComponent(apiUrl)}`;
+        }
+
+        function getGradeColor(value, type) {
+            if (type === 'pm10') {
+                if (value <= 30) return 'good';
+                if (value <= 80) return 'normal';
+                if (value <= 150) return 'bad';
+                return 'verybad';
+            } else if (type === 'pm25') {
+                if (value <= 15) return 'good';
+                if (value <= 35) return 'normal';
+                if (value <= 75) return 'bad';
+                return 'verybad';
+            }
+            return '';
+        }
+
+        function getGradeText(value, type) {
+            if (type === 'pm10') {
+                if (value <= 30) return '좋음';
+                if (value <= 80) return '보통';
+                if (value <= 150) return '나쁨';
+                return '매우나쁨';
+            } else if (type === 'pm25') {
+                if (value <= 15) return '좋음';
+                if (value <= 35) return '보통';
+                if (value <= 75) return '나쁨';
+                return '매우나쁨';
+            }
+            return '정보없음';
+        }
+
+        function formatDate(dateString) {
+            const year = dateString.substring(0, 4);
+            const month = dateString.substring(4, 6);
+            const day = dateString.substring(6, 8);
+            return `${year}년 ${month}월 ${day}일`;
+        }
+
+        async function fetchData() {
+            try {
+                const promises = REGIONS.map(region => {
+                    const url = getApiUrl(region);
+                    return fetch(url)
+                        .then(res => {
+                            if (!res.ok) {
+                                throw new Error(`HTTP error! status: ${res.status}`);
+                            }
+                            return res.json();
+                        })
+                        .catch(err => {
+                            console.error(`Failed to fetch ${region}:`, err);
+                            return { response: { body: { items: [] } } };
+                        });
+                });
+                
+                const results = await Promise.all(promises);
+
+                const mainItem = results[0].response?.body?.items?.[0];
+                const otherItems = results.slice(1).map(r => r.response?.body?.items?.[0]);
+
+                if (mainItem) {
+                    displayData(mainItem, otherItems);
+                } else {
+                    showError('데이터를 불러올 수 없습니다. 나중에 다시 시도해주세요.');
+                }
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showError('API 연결 오류: ' + error.message);
+            }
+        }
+
+        function getActivityMessage(pm10, pm25) {
+            const worseGrade = getGradeText(pm10, 'pm10');
+            const pm25Grade = getGradeText(pm25, 'pm25');
+
+            if (worseGrade === '좋음' && pm25Grade === '좋음') {
+                return {
+                    message: '🌞 야외 활동에 최적의 날씨입니다!',
+                    recommendation: '외출하기 좋은 날입니다. 산책, 운동, 여행 등 모든 야외 활동을 마음 편하게 즐길 수 있습니다.'
+                };
+            } else if (worseGrade === '보통' || pm25Grade === '보통') {
+                return {
+                    message: '☁️ 야외 활동이 가능한 수준입니다.',
+                    recommendation: '일반인들은 안심하고 외활동을 할 수 있으나, 민감한 계층(어린이, 노약자, 호흡기 질환자)은 장시간 노출을 피하시길 권장합니다.'
+                };
+            } else if (worseGrade === '나쁨' || pm25Grade === '나쁨') {
+                return {
+                    message: '😷 야외 활동 시 주의가 필요합니다.',
+                    recommendation: '민감한 계층은 외출을 자제하시고, 일반인도 장시간 야외 활동은 피하시는 것이 좋습니다. 마스크 착용을 권장합니다.'
+                };
+            } else {
+                return {
+                    message: '🚨 야외 활동을 자제해주세요.',
+                    recommendation: '모든 계층의 외출을 최소화하고, 외출 시에는 반드시 마스크를 착용하세요. 실내 활동으로 대체하시길 강력히 권장합니다.'
+                };
+            }
+        }
+
+        function createRegionCard(item) {
+            if (!item) return '';
+            const pm10 = parseInt(item.pm10Value);
+            const pm25 = parseInt(item.pm25Value);
+            return `
+                <div class="region-card">
+                    <div class="region-name">${item.stationName}</div>
+                    <div class="region-pm-row">
+                        <div class="region-pm-item">
+                            <div class="region-pm-label">미세먼지 (PM10)</div>
+                            <div class="region-pm-value">${pm10}</div>
+                            <div class="region-pm-grade ${getGradeColor(pm10, 'pm10')}">${getGradeText(pm10, 'pm10')}</div>
+                        </div>
+                        <div class="region-pm-item">
+                            <div class="region-pm-label">초미세먼지 (PM2.5)</div>
+                            <div class="region-pm-value">${pm25}</div>
+                            <div class="region-pm-grade ${getGradeColor(pm25, 'pm25')}">${getGradeText(pm25, 'pm25')}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayData(item, otherItems) {
+            const pm10 = parseInt(item.pm10Value);
+            const pm25 = parseInt(item.pm25Value);
+            const activityInfo = getActivityMessage(pm10, pm25);
+
+            let otherRegionsHtml = '';
+            if (otherItems && otherItems.some(i => i)) {
+                const regionCards = otherItems.map(i => createRegionCard(i)).join('');
+                otherRegionsHtml = `
+                <div class="other-regions-section">
+                    <div class="other-regions-title">📍 인근 지역 대기질</div>
+                    <div class="regions-grid">
+                        ${regionCards}
+                    </div>
+                </div>
+                `;
+            }
+
+            const html = `
+                <div class="data-grid">
+                    <div class="data-card ${getGradeColor(pm10, 'pm10')}">
+                        <div class="card-label">미세먼지 (PM10)</div>
+                        <div class="card-value">${pm10}</div>
+                        <div class="card-unit">㎍/㎥</div>
+                        <div class="card-grade">${getGradeText(pm10, 'pm10')}</div>
+                    </div>
+                    <div class="data-card ${getGradeColor(pm25, 'pm25')}">
+                        <div class="card-label">초미세먼지 (PM2.5)</div>
+                        <div class="card-value">${pm25}</div>
+                        <div class="card-unit">㎍/㎥</div>
+                        <div class="card-grade">${getGradeText(pm25, 'pm25')}</div>
+                    </div>
+                </div>
+
+                <div class="activity-section">
+                    <div class="activity-title">⛅ 야외 활동 평가</div>
+                    <div class="activity-message">${activityInfo.message}</div>
+                    <div class="activity-recommendation">${activityInfo.recommendation}</div>
+                </div>
+
+                ${otherRegionsHtml}
+
+                <div class="info-section">
+                    <div class="info-row">
+                        <span class="info-label">측정소명</span>
+                        <span class="info-value">${item.stationName}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">측정시간</span>
+                        <span class="info-value">${item.dataTime}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">오존 (O₃)</span>
+                        <span class="info-value">${item.o3Value} ppm</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">이산화질소 (NO₂)</span>
+                        <span class="info-value">${item.no2Value} ppm</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">일산화탄소 (CO)</span>
+                        <span class="info-value">${item.coValue} ppm</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">아황산가스 (SO₂)</span>
+                        <span class="info-value">${item.so2Value} ppm</span>
+                    </div>
+                </div>
+
+                <button class="refresh-btn" onclick="location.reload()">새로고침</button>
+                <div class="timestamp">마지막 업데이트: ${new Date().toLocaleTimeString('ko-KR')}</div>
+            `;
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        function showError(message) {
+            document.getElementById('content').innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // 페이지 로드 시 데이터 가져오기
+        window.addEventListener('load', fetchData);
+
+        // 5분마다 자동 새로고침
+        setInterval(fetchData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
