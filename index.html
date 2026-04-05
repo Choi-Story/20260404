@@ -266,16 +266,17 @@
         .regions-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
+            gap: 8px;
         }
 
         .region-card {
             background: white;
             border: 2px solid #e0e0e0;
             border-radius: 12px;
-            padding: 15px;
+            padding: 10px;
             text-align: center;
             transition: all 0.3s ease;
+            overflow: hidden;
         }
 
         .region-card:hover {
@@ -284,10 +285,13 @@
         }
 
         .region-name {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .region-pm-row {
@@ -302,24 +306,28 @@
         }
 
         .region-pm-label {
-            font-size: 10px;
+            font-size: 9px;
             color: #999;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .region-pm-value {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             color: #667eea;
             margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .region-pm-grade {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 6px;
             background: #f0f0f0;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .region-pm-grade.good {
@@ -362,6 +370,34 @@
             .card-value {
                 font-size: 32px;
             }
+
+            .regions-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+
+            .region-card {
+                padding: 8px;
+            }
+
+            .region-name {
+                font-size: 11px;
+                margin-bottom: 6px;
+            }
+
+            .region-pm-label {
+                font-size: 8px;
+                margin-bottom: 1px;
+            }
+
+            .region-pm-value {
+                font-size: 12px;
+            }
+
+            .region-pm-grade {
+                font-size: 9px;
+                padding: 2px 4px;
+            }
         }
     </style>
 </head>
@@ -381,7 +417,7 @@
     </div>
 
     <script>
-        const API_BASE = 'https://api.allorigins.win/raw?url=';
+        const API_BASE = 'https://api.codetabs.com/v1/proxy?quest=';
         const API_URL = 'http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty';
         const SERVICE_KEY = '45bac2492021e95f653a264c86a227b1926dc9a37ea1e21e949b8d1b659e2c09';
         const REGIONS = ['삼천동', '효자동', '팔복동', '노송동'];
