@@ -350,6 +350,102 @@
             color: #c71585;
         }
 
+        .hourly-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .hourly-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .hourly-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 12px;
+        }
+
+        .hourly-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .hourly-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .hourly-time {
+            font-size: 12px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .hourly-icon {
+            font-size: 14px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .hourly-pm10 {
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .hourly-pm25 {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .hourly-card.good {
+            border-color: #56ab2f;
+            background: rgba(86, 171, 47, 0.05);
+        }
+
+        .hourly-card.normal {
+            border-color: #FFD700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .hourly-card.bad {
+            border-color: #FF9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .hourly-card.verybad {
+            border-color: #FF0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .pm-good {
+            color: #56ab2f;
+        }
+
+        .pm-normal {
+            color: #FFD700;
+        }
+
+        .pm-bad {
+            color: #FF9800;
+        }
+
+        .pm-verybad {
+            color: #FF0000;
+        }
+
         .timestamp {
             text-align: center;
             margin-top: 15px;
@@ -422,9 +518,9 @@
         const SERVICE_KEY = '45bac2492021e95f653a264c86a227b1926dc9a37ea1e21e949b8d1b659e2c09';
         const REGIONS = ['삼천동', '효자동', '팔복동', '노송동'];
 
-        function getApiUrl(stationName) {
+        function getApiUrl(stationName, numOfRows = 1) {
             const encoded = encodeURIComponent(stationName);
-            const apiUrl = `${API_URL}?stationName=${encoded}&dataTerm=DAILY&pageNo=1&numOfRows=1&returnType=json&serviceKey=${SERVICE_KEY}&ver=1.5`;
+            const apiUrl = `${API_URL}?stationName=${encoded}&dataTerm=DAILY&pageNo=1&numOfRows=${numOfRows}&returnType=json&serviceKey=${SERVICE_KEY}&ver=1.5`;
             return `${API_BASE}${encodeURIComponent(apiUrl)}`;
         }
 
@@ -467,28 +563,37 @@
 
         async function fetchData() {
             try {
-                const promises = REGIONS.map(region => {
-                    const url = getApiUrl(region);
-                    return fetch(url)
+                const mainUrl = getApiUrl('삼천동', 24);
+                const otherUrls = ['효자동', '팔복동', '노송동'].map(region => ({ region, url: getApiUrl(region, 1) }));
+                
+                const mainResponse = await fetch(mainUrl)
+                    .then(res => {
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                        return res.json();
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch main:', err);
+                        return { response: { body: { items: [] } } };
+                    });
+                
+                const otherPromises = otherUrls.map(({ region, url }) =>
+                    fetch(url)
                         .then(res => {
-                            if (!res.ok) {
-                                throw new Error(`HTTP error! status: ${res.status}`);
-                            }
+                            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                             return res.json();
                         })
                         .catch(err => {
                             console.error(`Failed to fetch ${region}:`, err);
                             return { response: { body: { items: [] } } };
-                        });
-                });
+                        })
+                );
                 
-                const results = await Promise.all(promises);
+                const otherResults = await Promise.all(otherPromises);
+                const mainItems = mainResponse.response?.body?.items || [];
+                const otherItems = otherResults.map(r => r.response?.body?.items?.[0]);
 
-                const mainItem = results[0].response?.body?.items?.[0];
-                const otherItems = results.slice(1).map(r => r.response?.body?.items?.[0]);
-
-                if (mainItem) {
-                    displayData(mainItem, otherItems);
+                if (mainItems.length > 0) {
+                    displayData(mainItems[0], otherItems, mainItems);
                 } else {
                     showError('데이터를 불러올 수 없습니다. 나중에 다시 시도해주세요.');
                 }
@@ -548,7 +653,76 @@
             `;
         }
 
-        function displayData(item, otherItems) {
+        function getPmIcon(value, type) {
+            if (type === 'pm10') {
+                if (value <= 30) return '좋음';
+                if (value <= 80) return '보통';
+                if (value <= 150) return '나쁨';
+                return '매우나쁨';
+            } else if (type === 'pm25') {
+                if (value <= 15) return '좋음';
+                if (value <= 35) return '보통';
+                if (value <= 75) return '나쁨';
+                return '매우나쁨';
+            }
+            return '정보없음';
+        }
+
+        function createHourlyCards(items) {
+            if (!items || items.length === 0) {
+                return '';
+            }
+
+            const targetHours = [7, 9, 11, 13, 15, 17, 19, 21];
+            const hourlyMap = {};
+            
+            items.forEach(item => {
+                let hour;
+                if (item.dataTime && item.dataTime.length > 0) {
+                    if (item.dataTime.includes('-')) {
+                        hour = parseInt(item.dataTime.substring(11, 13));
+                    } else {
+                        hour = parseInt(item.dataTime.substring(8, 10));
+                    }
+                    if (targetHours.includes(hour)) {
+                        hourlyMap[hour] = item;
+                    }
+                }
+            });
+
+            const cards = targetHours.map(hour => {
+                const item = hourlyMap[hour];
+                if (!item) return '';
+                
+                const pm10 = parseInt(item.pm10Value) || 0;
+                const pm25 = parseInt(item.pm25Value) || 0;
+                const pm10Grade = getGradeColor(pm10, 'pm10');
+                const pm25Grade = getGradeColor(pm25, 'pm25');
+                const gradeOrder = { 'good': 0, 'normal': 1, 'bad': 2, 'verybad': 3 };
+                const worseGrade = (gradeOrder[pm10Grade] || 0) > (gradeOrder[pm25Grade] || 0) ? pm10Grade : pm25Grade;
+                const pm10Text = getPmIcon(pm10, 'pm10');
+                
+                return `
+                    <div class="hourly-card ${worseGrade}">
+                        <div class="hourly-time">${hour}시</div>
+                        <div class="hourly-icon">${pm10Text}</div>
+                        <div class="hourly-pm10 pm-${pm10Grade}">미세: ${pm10}</div>
+                        <div class="hourly-pm25 pm-${pm25Grade}">초미세: ${pm25}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="hourly-section">
+                    <div class="hourly-title">📈 시간별 대기질 추이 (2시간 단위)</div>
+                    <div class="hourly-cards">
+                        ${cards}
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayData(item, otherItems, hourlyItems) {
             const pm10 = parseInt(item.pm10Value);
             const pm25 = parseInt(item.pm25Value);
             const activityInfo = getActivityMessage(pm10, pm25);
@@ -565,6 +739,8 @@
                 </div>
                 `;
             }
+
+            const hourlyHtml = createHourlyCards(hourlyItems);
 
             const html = `
                 <div class="data-grid">
@@ -587,6 +763,8 @@
                     <div class="activity-message">${activityInfo.message}</div>
                     <div class="activity-recommendation">${activityInfo.recommendation}</div>
                 </div>
+
+                ${hourlyHtml}
 
                 ${otherRegionsHtml}
 
